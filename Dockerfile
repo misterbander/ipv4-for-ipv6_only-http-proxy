@@ -25,7 +25,7 @@ COPY --from=builder /ipv4-for-ipv6_only-http-proxy /usr/bin/ipv4-for-ipv6_only-h
 COPY --from=builder /new_tmp /tmp
 COPY --from=alpine:latest /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-EXPOSE 80
-EXPOSE 443
+EXPOSE 8080
+# EXPOSE 443
 
 CMD [ "/usr/bin/ipv4-for-ipv6_only-http-proxy" ]

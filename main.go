@@ -3,19 +3,21 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/caarlos0/env/v11"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"os"
-	"path"
 	"regexp"
 	"strings"
+
+	"github.com/caarlos0/env/v11"
 )
 
-var allowedHosts regexp.Regexp
-var dns *Dns
-var certs *CertStore
+var (
+	allowedHosts regexp.Regexp
+	dns          *Dns
+	certs        *CertStore
+)
 
 func main() {
 	var cfg config
@@ -27,18 +29,19 @@ func main() {
 
 	cfg.Print()
 
-	certs, err = NewCertStore(cfg.CertDir, cfg.CertFileName, cfg.KeyFileName)
-	if err != nil {
-		slog.Error("failed to initialize cert store", "error", err)
-		os.Exit(1)
-	}
-
-	if certs.IsEmpty() {
-		slog.Error("no certs found in cert dir", "certDir", cfg.CertDir)
-		os.Exit(1)
-	}
+	// certs, err = NewCertStore(cfg.CertDir, cfg.CertFileName, cfg.KeyFileName)
+	// if err != nil {
+	// 	slog.Error("failed to initialize cert store", "error", err)
+	// 	os.Exit(1)
+	// }
+	//
+	// if certs.IsEmpty() {
+	// 	slog.Error("no certs found in cert dir", "certDir", cfg.CertDir)
+	// 	os.Exit(1)
+	// }
 
 	dns = NewDns(cfg.CacheDNS, cfg.DNSCacheTTL)
+	go dns.cacheWorker()
 
 	if len(cfg.AllowedHosts) == 0 {
 		panic("no allowed hosts specified")
@@ -57,7 +60,7 @@ func main() {
 	}
 
 	go listenHttp(cfg)
-	go listenHttps(cfg)
+	// go listenHttps(cfg)
 
 	select {}
 }
@@ -72,31 +75,31 @@ func listenHttp(cfg config) {
 	}
 }
 
-func listenHttps(cfg config) {
-	tlsConfig := &tls.Config{
-		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			return certs.Get(info.ServerName)
-		},
-	}
-
-	server := &http.Server{
-		Addr:      fmt.Sprintf(":%d", cfg.HttpsPort),
-		TLSConfig: tlsConfig,
-		Handler:   http.HandlerFunc(handler),
-	}
-
-	slog.Info("https server started", "port", cfg.HttpsPort)
-
-	initialCert := certs.Names()[0]
-	cert := path.Join(cfg.CertDir, initialCert, cfg.CertFileName)
-	key := path.Join(cfg.CertDir, initialCert, cfg.KeyFileName)
-
-	err := server.ListenAndServeTLS(cert, key)
-	if err != nil {
-		slog.Error("https server failed", "error", err)
-		os.Exit(1)
-	}
-}
+// func listenHttps(cfg config) {
+// 	tlsConfig := &tls.Config{
+// 		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+// 			return certs.Get(info.ServerName)
+// 		},
+// 	}
+//
+// 	server := &http.Server{
+// 		Addr:      fmt.Sprintf(":%d", cfg.HttpsPort),
+// 		TLSConfig: tlsConfig,
+// 		Handler:   http.HandlerFunc(handler),
+// 	}
+//
+// 	slog.Info("https server started", "port", cfg.HttpsPort)
+//
+// 	initialCert := certs.Names()[0]
+// 	cert := path.Join(cfg.CertDir, initialCert, cfg.CertFileName)
+// 	key := path.Join(cfg.CertDir, initialCert, cfg.KeyFileName)
+//
+// 	err := server.ListenAndServeTLS(cert, key)
+// 	if err != nil {
+// 		slog.Error("https server failed", "error", err)
+// 		os.Exit(1)
+// 	}
+// }
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	host := strings.Split(r.Host, ":")[0]
@@ -112,10 +115,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
-	}
+	scheme := "https"
 
 	r.URL.Scheme = scheme
 	r.URL.Host = host

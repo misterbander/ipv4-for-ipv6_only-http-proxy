@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"sync"
 	"time"
@@ -34,9 +35,7 @@ func (d *Dns) cacheWorker() {
 		d.lock.Lock()
 
 		cacheCopy := map[string]CacheEntry{}
-		for host, entry := range d.cache {
-			cacheCopy[host] = entry
-		}
+		maps.Copy(cacheCopy, d.cache)
 
 		d.lock.Unlock()
 
@@ -49,7 +48,7 @@ func (d *Dns) cacheWorker() {
 			}
 		}
 
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 15)
 	}
 }
 

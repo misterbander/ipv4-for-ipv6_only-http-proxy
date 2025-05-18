@@ -6,7 +6,7 @@ import (
 )
 
 type config struct {
-	HttpPort     uint16 `env:"HTTP_PORT" envDefault:"80"`
+	HttpPort     uint16 `env:"HTTP_PORT" envDefault:"8080"`
 	HttpsPort    uint16 `env:"HTTPS_PORT" envDefault:"443"`
 	CertDir      string `env:"CERT_DIR" envDefault:"/etc/letsencrypt/live/"`
 	CertFileName string `env:"CERT_FILE_NAME" envDefault:"fullchain.pem"`
@@ -22,7 +22,7 @@ func (c config) Print() {
 	fmt.Println("Configuration:")
 	fmt.Println("----------------------")
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Type().Field(i)
 		value := v.Field(i)
 
